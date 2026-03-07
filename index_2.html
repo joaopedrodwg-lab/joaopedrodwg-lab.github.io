@@ -1,0 +1,2285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Gerenciador de Gelato Pro</title>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --dark: #1f2937;
+            --light: #f9fafb;
+            --border: #e5e7eb;
+            --text: #374151;
+            --text-light: #6b7280;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--light);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* Login Screen */
+        .login-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+        }
+
+        .login-box {
+            background: white;
+            padding: 48px;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            width: 100%;
+            max-width: 440px;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-header h1 {
+            color: var(--primary);
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .login-header p {
+            color: var(--text-light);
+            font-size: 15px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 15px;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--light);
+            color: var(--text);
+            margin-top: 12px;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+            width: auto;
+        }
+
+        /* Main Layout */
+        .app-container {
+            display: none;
+        }
+
+        .app-container.active {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: white;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-header h1 {
+            font-size: 20px;
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .sidebar-user {
+            padding: 16px 24px;
+            background: var(--light);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-user .user-email {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-bottom: 4px;
+        }
+
+        .sidebar-user .user-role {
+            font-size: 12px;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 16px 0;
+        }
+
+        .nav-item {
+            padding: 12px 24px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text);
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .nav-item:hover {
+            background: var(--light);
+            color: var(--primary);
+        }
+
+        .nav-item.active {
+            background: var(--light);
+            color: var(--primary);
+            border-right: 3px solid var(--primary);
+        }
+
+        .nav-item .icon {
+            font-size: 18px;
+        }
+
+        .sidebar-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: 280px;
+            padding: 32px;
+            max-width: calc(100vw - 280px);
+        }
+
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h2 {
+            font-size: 28px;
+            color: var(--dark);
+            margin-bottom: 8px;
+        }
+
+        .page-header p {
+            color: var(--text-light);
+            font-size: 15px;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 24px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--primary);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-bottom: 8px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .stat-change {
+            font-size: 13px;
+            margin-top: 8px;
+        }
+
+        .stat-change.positive {
+            color: var(--success);
+        }
+
+        .stat-change.negative {
+            color: var(--danger);
+        }
+
+        /* Event List */
+        .event-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .event-item {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s;
+        }
+
+        .event-item:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .event-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .event-item-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--dark);
+            margin-bottom: 4px;
+        }
+
+        .event-item-date {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        .event-item-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .event-item-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            padding: 16px;
+            background: var(--light);
+            border-radius: 12px;
+        }
+
+        .event-stat {
+            text-align: center;
+        }
+
+        .event-stat-label {
+            font-size: 12px;
+            color: var(--text-light);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+        }
+
+        .event-stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        /* Tables */
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: var(--light);
+        }
+
+        th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        tr:hover {
+            background: var(--light);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            overflow-y: auto;
+            padding: 40px 20px;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 32px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 600px;
+            margin: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 28px;
+            color: var(--text-light);
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .close-modal:hover {
+            background: var(--light);
+            color: var(--text);
+        }
+
+        /* Form Grid */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .form-grid-full {
+            grid-column: 1 / -1;
+        }
+
+        /* Tags */
+        .tag {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .tag-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .tag-danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .tag-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .tag-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-light);
+        }
+
+        .spinner {
+            border: 4px solid var(--border);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 48px;
+            height: 48px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-light);
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        /* Messages */
+        .message {
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .message-error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .message-success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .sidebar {
+                transform: translateX(-280px);
+                transition: transform 0.3s;
+            }
+
+            .sidebar.mobile-open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+                max-width: 100vw;
+            }
+
+            .mobile-menu-btn {
+                display: block !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 20px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                padding: 24px;
+            }
+        }
+
+        .mobile-menu-btn {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+            z-index: 999;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 8px;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--text-light);
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab:hover {
+            color: var(--primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Checkbox */
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checkbox-group:hover {
+            background: var(--light);
+        }
+
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .checkbox-group label {
+            cursor: pointer;
+            margin: 0;
+        }
+
+        /* Item List */
+        .item-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .item-list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: var(--light);
+            border-radius: 8px;
+            gap: 12px;
+        }
+
+        .item-list-item .item-info {
+            flex: 1;
+        }
+
+        .item-list-item .item-name {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .item-list-item .item-detail {
+            font-size: 13px;
+            color: var(--text-light);
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="loading" style="min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+        <div>
+            <div class="spinner"></div>
+            <p>Carregando...</p>
+        </div>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" class="login-container" style="display: none;">
+        <div class="login-box">
+            <div class="login-header">
+                <h1>🍦 Gelato Pro</h1>
+                <p>Sistema Profissional de Gestão</p>
+            </div>
+
+            <div id="loginError" class="message message-error" style="display: none;"></div>
+            <div id="loginSuccess" class="message message-success" style="display: none;"></div>
+            
+            <div class="input-group">
+                <label for="loginEmail">Email</label>
+                <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="email">
+            </div>
+            
+            <div class="input-group">
+                <label for="loginPassword">Senha</label>
+                <input type="password" id="loginPassword" placeholder="Digite sua senha" autocomplete="current-password">
+            </div>
+            
+            <button class="btn btn-primary" onclick="login()" id="loginBtn">
+                Entrar
+            </button>
+            <button class="btn btn-secondary" onclick="register()" id="registerBtn">
+                Criar Conta
+            </button>
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div id="appScreen" class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h1>🍦 Gelato Pro</h1>
+            </div>
+            
+            <div class="sidebar-user">
+                <div class="user-email" id="userEmail"></div>
+                <div class="user-role" id="userRole"></div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-item active" onclick="showPage('events')" data-page="events">
+                    <span class="icon">📅</span>
+                    <span>Eventos</span>
+                </div>
+                <div class="nav-item" onclick="showPage('admin')" data-page="admin" id="adminNav" style="display: none;">
+                    <span class="icon">👑</span>
+                    <span>Painel Admin</span>
+                </div>
+                <div class="nav-item" onclick="showPage('reports')" data-page="reports" id="reportsNav" style="display: none;">
+                    <span class="icon">📊</span>
+                    <span>Relatórios</span>
+                </div>
+                <div class="nav-item" onclick="showPage('settings')" data-page="settings" id="settingsNav" style="display: none;">
+                    <span class="icon">⚙️</span>
+                    <span>Configurações</span>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="btn btn-danger btn-small" onclick="logout()" style="width: 100%;">
+                    Sair
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Events Page -->
+            <div id="eventsPage" class="page active">
+                <div class="page-header">
+                    <h2>Eventos</h2>
+                    <p>Gerencie seus eventos e vendas de gelato</p>
+                </div>
+
+                <div style="margin-bottom: 24px;">
+                    <button class="btn btn-success" onclick="openEventModal()">
+                        ➕ Adicionar Evento
+                    </button>
+                </div>
+
+                <div id="eventsContainer" class="event-list">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Carregando eventos...</p>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 32px;">
+                    <div class="card-header">
+                        <div class="card-title">📊 Gráfico de Vendas (Gramas)</div>
+                    </div>
+                    <canvas id="salesChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Admin Page -->
+            <div id="adminPage" class="page" style="display: none;">
+                <div class="page-header">
+                    <h2>👑 Painel Administrativo</h2>
+                    <p>Gestão completa de custos, estoque e relatórios financeiros</p>
+                </div>
+
+                <div class="stats-grid" id="adminStats">
+                    <!-- Stats will be loaded here -->
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">💰 Eventos com Análise Financeira</div>
+                    </div>
+                    <div id="adminEventsContainer">
+                        <!-- Admin events will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Page -->
+            <div id="reportsPage" class="page" style="display: none;">
+                <div class="page-header">
+                    <h2>📊 Relatórios Financeiros</h2>
+                    <p>Análises detalhadas de vendas, custos e lucros</p>
+                </div>
+
+                <div class="stats-grid" id="reportStats">
+                    <!-- Report stats will be loaded here -->
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">💵 Gráfico de Receita (R$)</div>
+                    </div>
+                    <canvas id="revenueChart"></canvas>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">📈 Gráfico de Lucro</div>
+                    </div>
+                    <canvas id="profitChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div id="settingsPage" class="page" style="display: none;">
+                <div class="page-header">
+                    <h2>⚙️ Configurações</h2>
+                    <p>Configure preços, custos padrão e itens de estoque</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">💰 Configurações de Preços</div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>Custo do Gelato (R$/kg)</label>
+                            <input type="number" id="gelatoCostPerKg" step="0.01" placeholder="45.00">
+                        </div>
+                        <div class="input-group">
+                            <label>Preço de Venda (R$/g)</label>
+                            <input type="number" id="sellingPricePerGram" step="0.01" placeholder="0.10">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveSettings()">Salvar Configurações</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">📦 Itens de Estoque Padrão</div>
+                        <button class="btn btn-success btn-small" onclick="openAddStockItemModal()">+ Adicionar Item</button>
+                    </div>
+                    <div id="stockItemsList">
+                        <!-- Stock items will be loaded here -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">💸 Custos Fixos Padrão</div>
+                        <button class="btn btn-success btn-small" onclick="openAddFixedCostModal()">+ Adicionar Custo</button>
+                    </div>
+                    <div id="fixedCostsList">
+                        <!-- Fixed costs will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Mobile Menu Button -->
+        <button class="mobile-menu-btn" onclick="toggleMobileMenu()">
+            ☰
+        </button>
+    </div>
+
+    <!-- Event Modal -->
+    <div id="eventModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Novo Evento</div>
+                <button class="close-modal" onclick="closeEventModal()">&times;</button>
+            </div>
+            
+            <div class="input-group">
+                <label>Nome do Evento</label>
+                <input type="text" id="eventName" placeholder="Ex: Festa Aniversário">
+            </div>
+            
+            <div class="input-group">
+                <label>Data do Evento</label>
+                <input type="date" id="eventDate">
+            </div>
+            
+            <button class="btn btn-primary" onclick="addEvent()">Criar Evento</button>
+        </div>
+    </div>
+
+    <!-- Gelato Modal -->
+    <div id="gelatoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Adicionar Gelato</div>
+                <button class="close-modal" onclick="closeGelatoModal()">&times;</button>
+            </div>
+            
+            <div class="input-group">
+                <label>Nome do Gelato</label>
+                <input type="text" id="gelatoName" placeholder="Ex: Chocolate">
+            </div>
+            
+            <div class="form-grid">
+                <div class="input-group">
+                    <label>Peso Inicial (gramas)</label>
+                    <input type="number" id="gelatoWeight" placeholder="5000">
+                </div>
+                
+                <div class="input-group">
+                    <label>Quanto Voltou (gramas)</label>
+                    <input type="number" id="gelatoReturned" placeholder="1500">
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="addGelato()">Adicionar Gelato</button>
+        </div>
+    </div>
+
+    <!-- Admin Event Details Modal -->
+    <div id="adminEventModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <div class="modal-title" id="adminEventTitle">Detalhes do Evento</div>
+                <button class="close-modal" onclick="closeAdminEventModal()">&times;</button>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('info')">📋 Informações</button>
+                <button class="tab" onclick="showTab('stock')">📦 Estoque</button>
+                <button class="tab" onclick="showTab('costs')">💸 Custos</button>
+            </div>
+
+            <div id="infoTab" class="tab-content active">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>Total de Pessoas</label>
+                        <input type="number" id="adminEventPeople" placeholder="0">
+                    </div>
+                    <div class="input-group">
+                        <label>Local do Evento</label>
+                        <input type="text" id="adminEventLocation" placeholder="Endereço">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="saveAdminEventInfo()">Salvar Informações</button>
+            </div>
+
+            <div id="stockTab" class="tab-content">
+                <div id="eventStockList" class="item-list">
+                    <!-- Event stock items will be loaded here -->
+                </div>
+                <button class="btn btn-success" onclick="addStockToEvent()" style="margin-top: 16px;">+ Adicionar Item</button>
+            </div>
+
+            <div id="costsTab" class="tab-content">
+                <div id="eventCostsList" class="item-list">
+                    <!-- Event costs will be loaded here -->
+                </div>
+                <button class="btn btn-success" onclick="addCostToEvent()" style="margin-top: 16px;">+ Adicionar Custo</button>
+                
+                <div class="card" style="margin-top: 24px; background: var(--light);">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: 14px; color: var(--text-light); margin-bottom: 4px;">TOTAL DE CUSTOS</div>
+                            <div style="font-size: 28px; font-weight: 700; color: var(--danger);" id="totalCosts">R$ 0,00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Stock Item Modal -->
+    <div id="addStockItemModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Adicionar Item de Estoque</div>
+                <button class="close-modal" onclick="closeAddStockItemModal()">&times;</button>
+            </div>
+            
+            <div class="input-group">
+                <label>Nome do Item</label>
+                <input type="text" id="stockItemName" placeholder="Ex: Colheres">
+            </div>
+            
+            <div class="input-group">
+                <label>Unidade</label>
+                <input type="text" id="stockItemUnit" placeholder="Ex: unidade, caixa">
+            </div>
+            
+            <button class="btn btn-primary" onclick="addStockItem()">Adicionar</button>
+        </div>
+    </div>
+
+    <!-- Add Fixed Cost Modal -->
+    <div id="addFixedCostModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Adicionar Custo Fixo</div>
+                <button class="close-modal" onclick="closeAddFixedCostModal()">&times;</button>
+            </div>
+            
+            <div class="input-group">
+                <label>Nome do Custo</label>
+                <input type="text" id="fixedCostName" placeholder="Ex: Transporte">
+            </div>
+            
+            <div class="input-group">
+                <label>Valor Padrão (R$)</label>
+                <input type="number" id="fixedCostValue" step="0.01" placeholder="0.00">
+            </div>
+            
+            <div class="input-group">
+                <label>Tipo de Custo</label>
+                <select id="fixedCostType" style="width: 100%; padding: 14px; border: 2px solid var(--border); border-radius: 12px; font-size: 15px;">
+                    <option value="fixo">Fixo</option>
+                    <option value="variavel">Variável</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-primary" onclick="addFixedCost()">Adicionar</button>
+        </div>
+    </div>
+
+    <!-- Add Event Stock Modal -->
+    <div id="addEventStockModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Adicionar Item ao Evento</div>
+                <button class="close-modal" onclick="closeAddEventStockModal()">&times;</button>
+            </div>
+            
+            <div id="standardStockList">
+                <!-- Standard stock items will be loaded here -->
+            </div>
+            
+            <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border);">
+            
+            <div class="input-group">
+                <label>Ou adicionar item personalizado</label>
+                <input type="text" id="customStockName" placeholder="Nome do item">
+            </div>
+            
+            <div class="input-group">
+                <label>Quantidade</label>
+                <input type="number" id="customStockQuantity" placeholder="0">
+            </div>
+            
+            <button class="btn btn-primary" onclick="saveEventStock()">Adicionar ao Evento</button>
+        </div>
+    </div>
+
+    <!-- Add Event Cost Modal -->
+    <div id="addEventCostModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Adicionar Custo ao Evento</div>
+                <button class="close-modal" onclick="closeAddEventCostModal()">&times;</button>
+            </div>
+            
+            <div id="standardCostsList">
+                <!-- Standard costs will be loaded here -->
+            </div>
+            
+            <hr style="margin: 24px 0; border: none; border-top: 1px solid var(--border);">
+            
+            <div class="input-group">
+                <label>Ou adicionar custo personalizado</label>
+                <input type="text" id="customCostName" placeholder="Nome do custo">
+            </div>
+            
+            <div class="input-group">
+                <label>Valor (R$)</label>
+                <input type="number" id="customCostValue" step="0.01" placeholder="0.00">
+            </div>
+            
+            <button class="btn btn-primary" onclick="saveEventCost()">Adicionar ao Evento</button>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB3oXeNB5OZOk19-Nh73JTxlniDpqfNigA",
+            authDomain: "gelato-manager.firebaseapp.com",
+            databaseURL: "https://gelato-manager-default-rtdb.firebaseio.com",
+            projectId: "gelato-manager",
+            storageBucket: "gelato-manager.firebasestorage.app",
+            messagingSenderId: "310406812351",
+            appId: "1:310406812351:web:b2755ca12e53389693ec0a"
+        };
+
+        // Admin emails
+        const ADMIN_EMAILS = [
+            'joaoctati@gmail.com',
+            'joaocarloscorte@uol.com.br'
+        ];
+
+        // Global variables
+        let app, auth, database;
+        let currentUser = null;
+        let isAdmin = false;
+        let currentEventId = null;
+        let eventsRef, settingsRef, stockRef, costsRef;
+        let chart = null;
+        let revenueChart = null;
+        let profitChart = null;
+        let allEvents = [];
+
+        // Initialize Firebase
+        function initFirebase() {
+            try {
+                console.log('Initializing Firebase with config:', firebaseConfig);
+                app = firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                database = firebase.database();
+                
+                eventsRef = database.ref('events');
+                settingsRef = database.ref('settings');
+                stockRef = database.ref('standardStock');
+                costsRef = database.ref('standardCosts');
+
+                console.log('Firebase initialized successfully');
+
+                auth.onAuthStateChanged(user => {
+                    if (user) {
+                        currentUser = user;
+                        isAdmin = ADMIN_EMAILS.includes(user.email.toLowerCase());
+                        showApp();
+                    } else {
+                        showLogin();
+                    }
+                });
+            } catch (error) {
+                console.error('Firebase initialization error:', error);
+                console.error('Error code:', error.code);
+                console.error('Error message:', error.message);
+                showLoginError('Erro ao conectar com Firebase: ' + error.message);
+                showLogin();
+            }
+        }
+
+        // Auth Functions
+        async function register() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) {
+                showLoginError('Preencha todos os campos');
+                return;
+            }
+
+            if (password.length < 6) {
+                showLoginError('A senha deve ter pelo menos 6 caracteres');
+                return;
+            }
+
+            disableButtons(true);
+
+            try {
+                await auth.createUserWithEmailAndPassword(email, password);
+                showLoginSuccess('Conta criada com sucesso!');
+            } catch (error) {
+                if (error.code === 'auth/email-already-in-use') {
+                    showLoginError('Este email já está cadastrado');
+                } else if (error.code === 'auth/invalid-email') {
+                    showLoginError('Email inválido');
+                } else {
+                    showLoginError('Erro ao criar conta: ' + error.message);
+                }
+            } finally {
+                disableButtons(false);
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('loginEmail').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) {
+                showLoginError('Preencha todos os campos');
+                return;
+            }
+
+            disableButtons(true);
+
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+            } catch (error) {
+                if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+                    showLoginError('Email ou senha incorretos');
+                } else if (error.code === 'auth/invalid-email') {
+                    showLoginError('Email inválido');
+                } else {
+                    showLoginError('Erro ao fazer login: ' + error.message);
+                }
+            } finally {
+                disableButtons(false);
+            }
+        }
+
+        async function logout() {
+            try {
+                await auth.signOut();
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        }
+
+        function showLogin() {
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('appScreen').classList.remove('active');
+        }
+
+        function showApp() {
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('appScreen').classList.add('active');
+            
+            document.getElementById('userEmail').textContent = currentUser.email;
+            document.getElementById('userRole').textContent = isAdmin ? '👑 Administrador' : '👤 Usuário';
+            
+            // Show/hide admin sections
+            if (isAdmin) {
+                document.getElementById('adminNav').style.display = 'flex';
+                document.getElementById('reportsNav').style.display = 'flex';
+                document.getElementById('settingsNav').style.display = 'flex';
+            }
+            
+            loadEvents();
+            loadSettings();
+            loadStockItems();
+            loadFixedCosts();
+        }
+
+        function showLoginError(message) {
+            const errorEl = document.getElementById('loginError');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+            setTimeout(() => errorEl.style.display = 'none', 5000);
+        }
+
+        function showLoginSuccess(message) {
+            const successEl = document.getElementById('loginSuccess');
+            successEl.textContent = message;
+            successEl.style.display = 'block';
+            setTimeout(() => successEl.style.display = 'none', 3000);
+        }
+
+        function disableButtons(disabled) {
+            document.getElementById('loginBtn').disabled = disabled;
+            document.getElementById('registerBtn').disabled = disabled;
+        }
+
+        // Navigation
+        function showPage(pageName) {
+            // Update nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`[data-page="${pageName}"]`).classList.add('active');
+
+            // Show page
+            document.querySelectorAll('.page').forEach(page => {
+                page.style.display = 'none';
+            });
+            document.getElementById(pageName + 'Page').style.display = 'block';
+
+            // Load page-specific data
+            if (pageName === 'admin' && isAdmin) {
+                loadAdminData();
+            } else if (pageName === 'reports' && isAdmin) {
+                loadReportData();
+            }
+
+            // Close mobile menu
+            if (window.innerWidth <= 1024) {
+                document.getElementById('sidebar').classList.remove('mobile-open');
+            }
+        }
+
+        function toggleMobileMenu() {
+            document.getElementById('sidebar').classList.toggle('mobile-open');
+        }
+
+        // Tabs
+        function showTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+
+        // Events Management
+        function loadEvents() {
+            eventsRef.on('value', snapshot => {
+                allEvents = [];
+                snapshot.forEach(childSnapshot => {
+                    allEvents.push({
+                        id: childSnapshot.key,
+                        ...childSnapshot.val()
+                    });
+                });
+                
+                allEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
+                
+                renderEvents(allEvents);
+                updateChart(allEvents);
+            });
+        }
+
+        function openEventModal() {
+            document.getElementById('eventModal').classList.add('active');
+            document.getElementById('eventName').value = '';
+            document.getElementById('eventDate').value = '';
+        }
+
+        function closeEventModal() {
+            document.getElementById('eventModal').classList.remove('active');
+        }
+
+        async function addEvent() {
+            const name = document.getElementById('eventName').value.trim();
+            const date = document.getElementById('eventDate').value;
+
+            if (!name || !date) {
+                alert('Por favor, preencha todos os campos');
+                return;
+            }
+
+            try {
+                await eventsRef.push({
+                    name,
+                    date,
+                    gelatos: {},
+                    adminInfo: {
+                        people: 0,
+                        location: '',
+                        stock: {},
+                        costs: {}
+                    },
+                    createdBy: currentUser.email,
+                    createdAt: firebase.database.ServerValue.TIMESTAMP
+                });
+                closeEventModal();
+            } catch (error) {
+                console.error('Error adding event:', error);
+                alert('Erro ao adicionar evento');
+            }
+        }
+
+        async function deleteEvent(eventId) {
+            if (!confirm('Tem certeza que deseja excluir este evento?')) return;
+
+            try {
+                await eventsRef.child(eventId).remove();
+            } catch (error) {
+                console.error('Error deleting event:', error);
+                alert('Erro ao excluir evento');
+            }
+        }
+
+        // Gelato Management
+        function openGelatoModal(eventId) {
+            currentEventId = eventId;
+            document.getElementById('gelatoModal').classList.add('active');
+            document.getElementById('gelatoName').value = '';
+            document.getElementById('gelatoWeight').value = '';
+            document.getElementById('gelatoReturned').value = '';
+        }
+
+        function closeGelatoModal() {
+            document.getElementById('gelatoModal').classList.remove('active');
+            currentEventId = null;
+        }
+
+        async function addGelato() {
+            const name = document.getElementById('gelatoName').value.trim();
+            const weight = parseFloat(document.getElementById('gelatoWeight').value);
+            const returned = parseFloat(document.getElementById('gelatoReturned').value);
+
+            if (!name || !weight || isNaN(weight) || isNaN(returned)) {
+                alert('Por favor, preencha todos os campos corretamente');
+                return;
+            }
+
+            if (returned > weight) {
+                alert('O peso que voltou não pode ser maior que o peso inicial');
+                return;
+            }
+
+            const sold = weight - returned;
+
+            try {
+                await eventsRef.child(currentEventId).child('gelatos').push({
+                    name,
+                    weight,
+                    returned,
+                    sold,
+                    addedBy: currentUser.email,
+                    addedAt: firebase.database.ServerValue.TIMESTAMP
+                });
+                closeGelatoModal();
+            } catch (error) {
+                console.error('Error adding gelato:', error);
+                alert('Erro ao adicionar gelato');
+            }
+        }
+
+        async function deleteGelato(eventId, gelatoId) {
+            if (!confirm('Tem certeza que deseja excluir este gelato?')) return;
+
+            try {
+                await eventsRef.child(eventId).child('gelatos').child(gelatoId).remove();
+            } catch (error) {
+                console.error('Error deleting gelato:', error);
+                alert('Erro ao excluir gelato');
+            }
+        }
+
+        // Rendering
+        function renderEvents(events) {
+            const container = document.getElementById('eventsContainer');
+            
+            if (events.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📅</div>
+                        <h3>Nenhum evento cadastrado</h3>
+                        <p>Clique em "Adicionar Evento" para começar</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = events.map(event => {
+                const gelatos = event.gelatos ? Object.entries(event.gelatos) : [];
+                const totalSold = gelatos.reduce((sum, [_, g]) => sum + (g.sold || 0), 0);
+                const formattedDate = new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR');
+
+                return `
+                    <div class="event-item">
+                        <div class="event-item-header">
+                            <div>
+                                <div class="event-item-title">${event.name}</div>
+                                <div class="event-item-date">📅 ${formattedDate}</div>
+                            </div>
+                            <div class="event-item-actions">
+                                <button class="btn btn-success btn-small" onclick="openGelatoModal('${event.id}')">
+                                    + Gelato
+                                </button>
+                                ${isAdmin ? `<button class="btn btn-primary btn-small" onclick="openAdminEventModal('${event.id}')">👑 Admin</button>` : ''}
+                                <button class="btn btn-danger btn-small" onclick="deleteEvent('${event.id}')">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+
+                        ${gelatos.length > 0 ? `
+                            <div class="event-item-stats">
+                                <div class="event-stat">
+                                    <div class="event-stat-label">Total Vendido</div>
+                                    <div class="event-stat-value">${totalSold.toLocaleString('pt-BR')}g</div>
+                                </div>
+                                <div class="event-stat">
+                                    <div class="event-stat-label">Sabores</div>
+                                    <div class="event-stat-value">${gelatos.length}</div>
+                                </div>
+                            </div>
+
+                            <div class="item-list" style="margin-top: 16px;">
+                                ${gelatos.map(([gelatoId, gelato]) => `
+                                    <div class="item-list-item">
+                                        <div class="item-info">
+                                            <div class="item-name">🍦 ${gelato.name}</div>
+                                            <div class="item-detail">
+                                                Inicial: ${gelato.weight.toLocaleString('pt-BR')}g • 
+                                                Voltou: ${gelato.returned.toLocaleString('pt-BR')}g • 
+                                                <strong style="color: var(--success);">Vendido: ${gelato.sold.toLocaleString('pt-BR')}g</strong>
+                                            </div>
+                                        </div>
+                                        <button class="btn btn-danger btn-small" onclick="deleteGelato('${event.id}', '${gelatoId}')">
+                                            🗑️
+                                        </button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : `
+                            <div class="empty-state" style="padding: 30px;">
+                                <p>Nenhum gelato adicionado</p>
+                            </div>
+                        `}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateChart(events) {
+            const ctx = document.getElementById('salesChart').getContext('2d');
+            
+            const chartData = events.map(event => {
+                const gelatos = event.gelatos ? Object.values(event.gelatos) : [];
+                return {
+                    name: event.name,
+                    total: gelatos.reduce((sum, g) => sum + (g.sold || 0), 0)
+                };
+            }).filter(d => d.total > 0);
+
+            if (chart) chart.destroy();
+
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.map(d => d.name),
+                    datasets: [{
+                        label: 'Vendas (gramas)',
+                        data: chartData.map(d => d.total),
+                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                        borderColor: 'rgba(99, 102, 241, 1)',
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: value => value.toLocaleString('pt-BR') + 'g'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Admin Functions
+        let currentSettings = {
+            gelatoCostPerKg: 45,
+            sellingPricePerGram: 0.10
+        };
+
+        function loadSettings() {
+            settingsRef.on('value', snapshot => {
+                if (snapshot.exists()) {
+                    currentSettings = snapshot.val();
+                }
+                if (isAdmin) {
+                    document.getElementById('gelatoCostPerKg').value = currentSettings.gelatoCostPerKg;
+                    document.getElementById('sellingPricePerGram').value = currentSettings.sellingPricePerGram;
+                }
+            });
+        }
+
+        async function saveSettings() {
+            const gelatoCostPerKg = parseFloat(document.getElementById('gelatoCostPerKg').value);
+            const sellingPricePerGram = parseFloat(document.getElementById('sellingPricePerGram').value);
+
+            if (isNaN(gelatoCostPerKg) || isNaN(sellingPricePerGram)) {
+                alert('Preencha todos os campos corretamente');
+                return;
+            }
+
+            try {
+                await settingsRef.set({
+                    gelatoCostPerKg,
+                    sellingPricePerGram
+                });
+                alert('Configurações salvas com sucesso!');
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                alert('Erro ao salvar configurações');
+            }
+        }
+
+        function openAdminEventModal(eventId) {
+            currentEventId = eventId;
+            const event = allEvents.find(e => e.id === eventId);
+            
+            document.getElementById('adminEventTitle').textContent = event.name;
+            document.getElementById('adminEventPeople').value = event.adminInfo?.people || 0;
+            document.getElementById('adminEventLocation').value = event.adminInfo?.location || '';
+            
+            loadEventStock();
+            loadEventCosts();
+            
+            document.getElementById('adminEventModal').classList.add('active');
+        }
+
+        function closeAdminEventModal() {
+            document.getElementById('adminEventModal').classList.remove('active');
+            currentEventId = null;
+        }
+
+        async function saveAdminEventInfo() {
+            const people = parseInt(document.getElementById('adminEventPeople').value);
+            const location = document.getElementById('adminEventLocation').value.trim();
+
+            try {
+                await eventsRef.child(currentEventId).child('adminInfo').update({
+                    people,
+                    location
+                });
+                alert('Informações salvas!');
+            } catch (error) {
+                console.error('Error saving admin info:', error);
+                alert('Erro ao salvar informações');
+            }
+        }
+
+        // Stock Management
+        let standardStockItems = [];
+
+        function loadStockItems() {
+            stockRef.on('value', snapshot => {
+                standardStockItems = [];
+                snapshot.forEach(childSnapshot => {
+                    standardStockItems.push({
+                        id: childSnapshot.key,
+                        ...childSnapshot.val()
+                    });
+                });
+                renderStockItems();
+            });
+        }
+
+        function renderStockItems() {
+            const container = document.getElementById('stockItemsList');
+            if (!container) return;
+
+            if (standardStockItems.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>Nenhum item cadastrado</p></div>';
+                return;
+            }
+
+            container.innerHTML = `<div class="item-list">${standardStockItems.map(item => `
+                <div class="item-list-item">
+                    <div class="item-info">
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-detail">Unidade: ${item.unit}</div>
+                    </div>
+                    <button class="btn btn-danger btn-small" onclick="deleteStockItem('${item.id}')">🗑️</button>
+                </div>
+            `).join('')}</div>`;
+        }
+
+        function openAddStockItemModal() {
+            document.getElementById('addStockItemModal').classList.add('active');
+            document.getElementById('stockItemName').value = '';
+            document.getElementById('stockItemUnit').value = '';
+        }
+
+        function closeAddStockItemModal() {
+            document.getElementById('addStockItemModal').classList.remove('active');
+        }
+
+        async function addStockItem() {
+            const name = document.getElementById('stockItemName').value.trim();
+            const unit = document.getElementById('stockItemUnit').value.trim();
+
+            if (!name || !unit) {
+                alert('Preencha todos os campos');
+                return;
+            }
+
+            try {
+                await stockRef.push({ name, unit });
+                closeAddStockItemModal();
+            } catch (error) {
+                console.error('Error adding stock item:', error);
+                alert('Erro ao adicionar item');
+            }
+        }
+
+        async function deleteStockItem(itemId) {
+            if (!confirm('Tem certeza?')) return;
+            try {
+                await stockRef.child(itemId).remove();
+            } catch (error) {
+                console.error('Error deleting stock item:', error);
+            }
+        }
+
+        // Fixed Costs Management
+        let standardCosts = [];
+
+        function loadFixedCosts() {
+            costsRef.on('value', snapshot => {
+                standardCosts = [];
+                snapshot.forEach(childSnapshot => {
+                    standardCosts.push({
+                        id: childSnapshot.key,
+                        ...childSnapshot.val()
+                    });
+                });
+                renderFixedCosts();
+            });
+        }
+
+        function renderFixedCosts() {
+            const container = document.getElementById('fixedCostsList');
+            if (!container) return;
+
+            if (standardCosts.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>Nenhum custo cadastrado</p></div>';
+                return;
+            }
+
+            container.innerHTML = `<div class="item-list">${standardCosts.map(cost => `
+                <div class="item-list-item">
+                    <div class="item-info">
+                        <div class="item-name">${cost.name}</div>
+                        <div class="item-detail">R$ ${cost.value.toFixed(2)} • ${cost.type}</div>
+                    </div>
+                    <button class="btn btn-danger btn-small" onclick="deleteFixedCost('${cost.id}')">🗑️</button>
+                </div>
+            `).join('')}</div>`;
+        }
+
+        function openAddFixedCostModal() {
+            document.getElementById('addFixedCostModal').classList.add('active');
+            document.getElementById('fixedCostName').value = '';
+            document.getElementById('fixedCostValue').value = '';
+            document.getElementById('fixedCostType').value = 'fixo';
+        }
+
+        function closeAddFixedCostModal() {
+            document.getElementById('addFixedCostModal').classList.remove('active');
+        }
+
+        async function addFixedCost() {
+            const name = document.getElementById('fixedCostName').value.trim();
+            const value = parseFloat(document.getElementById('fixedCostValue').value);
+            const type = document.getElementById('fixedCostType').value;
+
+            if (!name || isNaN(value)) {
+                alert('Preencha todos os campos');
+                return;
+            }
+
+            try {
+                await costsRef.push({ name, value, type });
+                closeAddFixedCostModal();
+            } catch (error) {
+                console.error('Error adding fixed cost:', error);
+                alert('Erro ao adicionar custo');
+            }
+        }
+
+        async function deleteFixedCost(costId) {
+            if (!confirm('Tem certeza?')) return;
+            try {
+                await costsRef.child(costId).remove();
+            } catch (error) {
+                console.error('Error deleting fixed cost:', error);
+            }
+        }
+
+        // Event Stock
+        function loadEventStock() {
+            const event = allEvents.find(e => e.id === currentEventId);
+            const stock = event?.adminInfo?.stock || {};
+            
+            const container = document.getElementById('eventStockList');
+            const items = Object.entries(stock);
+
+            if (items.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>Nenhum item adicionado</p></div>';
+                return;
+            }
+
+            container.innerHTML = items.map(([id, item]) => `
+                <div class="item-list-item">
+                    <div class="item-info">
+                        <div class="item-name">${item.name}</div>
+                        <div class="item-detail">Quantidade: ${item.quantity}</div>
+                    </div>
+                    <button class="btn btn-danger btn-small" onclick="deleteEventStock('${id}')">🗑️</button>
+                </div>
+            `).join('');
+        }
+
+        function addStockToEvent() {
+            document.getElementById('addEventStockModal').classList.add('active');
+            document.getElementById('customStockName').value = '';
+            document.getElementById('customStockQuantity').value = '';
+            
+            const container = document.getElementById('standardStockList');
+            container.innerHTML = `<div style="margin-bottom: 16px;"><strong>Selecione itens padrão:</strong></div>` +
+                standardStockItems.map(item => `
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="stock_${item.id}" value="${item.id}">
+                        <label for="stock_${item.id}">${item.name} (${item.unit})</label>
+                        <input type="number" placeholder="Qtd" style="width: 80px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; margin-left: auto;" id="stockQty_${item.id}">
+                    </div>
+                `).join('');
+        }
+
+        function closeAddEventStockModal() {
+            document.getElementById('addEventStockModal').classList.remove('active');
+        }
+
+        async function saveEventStock() {
+            const updates = {};
+            
+            // Check standard items
+            standardStockItems.forEach(item => {
+                const checkbox = document.getElementById(`stock_${item.id}`);
+                const qtyInput = document.getElementById(`stockQty_${item.id}`);
+                if (checkbox?.checked && qtyInput?.value) {
+                    const id = 'stock_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    updates[id] = {
+                        name: item.name,
+                        quantity: parseInt(qtyInput.value)
+                    };
+                }
+            });
+
+            // Check custom item
+            const customName = document.getElementById('customStockName').value.trim();
+            const customQty = document.getElementById('customStockQuantity').value;
+            if (customName && customQty) {
+                const id = 'stock_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                updates[id] = {
+                    name: customName,
+                    quantity: parseInt(customQty)
+                };
+            }
+
+            if (Object.keys(updates).length === 0) {
+                alert('Selecione ou adicione pelo menos um item');
+                return;
+            }
+
+            try {
+                await eventsRef.child(currentEventId).child('adminInfo/stock').update(updates);
+                closeAddEventStockModal();
+                loadEventStock();
+            } catch (error) {
+                console.error('Error saving event stock:', error);
+                alert('Erro ao adicionar itens');
+            }
+        }
+
+        async function deleteEventStock(stockId) {
+            if (!confirm('Tem certeza?')) return;
+            try {
+                await eventsRef.child(currentEventId).child('adminInfo/stock').child(stockId).remove();
+                loadEventStock();
+            } catch (error) {
+                console.error('Error deleting event stock:', error);
+            }
+        }
+
+        // Event Costs
+        function loadEventCosts() {
+            const event = allEvents.find(e => e.id === currentEventId);
+            const costs = event?.adminInfo?.costs || {};
+            const gelatos = event?.gelatos ? Object.values(event.gelatos) : [];
+            const totalSoldGrams = gelatos.reduce((sum, g) => sum + (g.sold || 0), 0);
+            const gelatoCost = (totalSoldGrams / 1000) * currentSettings.gelatoCostPerKg;
+            
+            const container = document.getElementById('eventCostsList');
+            const items = Object.entries(costs);
+            
+            let totalCosts = gelatoCost;
+            items.forEach(([_, cost]) => totalCosts += cost.value);
+
+            container.innerHTML = `
+                <div class="item-list-item" style="background: #fef3c7;">
+                    <div class="item-info">
+                        <div class="item-name">🍦 Custo do Gelato</div>
+                        <div class="item-detail">${totalSoldGrams.toLocaleString('pt-BR')}g vendidos = ${(totalSoldGrams/1000).toFixed(2)}kg × R$ ${currentSettings.gelatoCostPerKg.toFixed(2)}/kg</div>
+                    </div>
+                    <div style="font-weight: 700; color: var(--warning);">R$ ${gelatoCost.toFixed(2)}</div>
+                </div>
+                ${items.map(([id, cost]) => `
+                    <div class="item-list-item">
+                        <div class="item-info">
+                            <div class="item-name">${cost.name}</div>
+                            <div class="item-detail">R$ ${cost.value.toFixed(2)}</div>
+                        </div>
+                        <button class="btn btn-danger btn-small" onclick="deleteEventCost('${id}')">🗑️</button>
+                    </div>
+                `).join('')}
+            `;
+
+            document.getElementById('totalCosts').textContent = `R$ ${totalCosts.toFixed(2)}`;
+        }
+
+        function addCostToEvent() {
+            document.getElementById('addEventCostModal').classList.add('active');
+            document.getElementById('customCostName').value = '';
+            document.getElementById('customCostValue').value = '';
+            
+            const container = document.getElementById('standardCostsList');
+            container.innerHTML = `<div style="margin-bottom: 16px;"><strong>Selecione custos padrão:</strong></div>` +
+                standardCosts.map(cost => `
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="cost_${cost.id}" value="${cost.id}">
+                        <label for="cost_${cost.id}">${cost.name} - R$ ${cost.value.toFixed(2)} (${cost.type})</label>
+                    </div>
+                `).join('');
+        }
+
+        function closeAddEventCostModal() {
+            document.getElementById('addEventCostModal').classList.remove('active');
+        }
+
+        async function saveEventCost() {
+            const updates = {};
+            
+            // Check standard costs
+            standardCosts.forEach(cost => {
+                const checkbox = document.getElementById(`cost_${cost.id}`);
+                if (checkbox?.checked) {
+                    const id = 'cost_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    updates[id] = {
+                        name: cost.name,
+                        value: cost.value
+                    };
+                }
+            });
+
+            // Check custom cost
+            const customName = document.getElementById('customCostName').value.trim();
+            const customValue = parseFloat(document.getElementById('customCostValue').value);
+            if (customName && !isNaN(customValue)) {
+                const id = 'cost_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                updates[id] = {
+                    name: customName,
+                    value: customValue
+                };
+            }
+
+            if (Object.keys(updates).length === 0) {
+                alert('Selecione ou adicione pelo menos um custo');
+                return;
+            }
+
+            try {
+                await eventsRef.child(currentEventId).child('adminInfo/costs').update(updates);
+                closeAddEventCostModal();
+                loadEventCosts();
+            } catch (error) {
+                console.error('Error saving event costs:', error);
+                alert('Erro ao adicionar custos');
+            }
+        }
+
+        async function deleteEventCost(costId) {
+            if (!confirm('Tem certeza?')) return;
+            try {
+                await eventsRef.child(currentEventId).child('adminInfo/costs').child(costId).remove();
+                loadEventCosts();
+            } catch (error) {
+                console.error('Error deleting event cost:', error);
+            }
+        }
+
+        // Admin Page Data
+        function loadAdminData() {
+            const statsContainer = document.getElementById('adminStats');
+            const eventsContainer = document.getElementById('adminEventsContainer');
+
+            let totalRevenue = 0;
+            let totalCosts = 0;
+            let totalGrams = 0;
+
+            allEvents.forEach(event => {
+                const gelatos = event.gelatos ? Object.values(event.gelatos) : [];
+                const grams = gelatos.reduce((sum, g) => sum + (g.sold || 0), 0);
+                totalGrams += grams;
+
+                const revenue = grams * currentSettings.sellingPricePerGram;
+                totalRevenue += revenue;
+
+                const gelatoCost = (grams / 1000) * currentSettings.gelatoCostPerKg;
+                const costs = event.adminInfo?.costs || {};
+                const extraCosts = Object.values(costs).reduce((sum, c) => sum + c.value, 0);
+                totalCosts += gelatoCost + extraCosts;
+            });
+
+            const profit = totalRevenue - totalCosts;
+
+            statsContainer.innerHTML = `
+                <div class="stat-card" style="border-left-color: var(--success);">
+                    <div class="stat-label">Receita Total</div>
+                    <div class="stat-value" style="color: var(--success);">R$ ${totalRevenue.toFixed(2)}</div>
+                </div>
+                <div class="stat-card" style="border-left-color: var(--danger);">
+                    <div class="stat-label">Custos Totais</div>
+                    <div class="stat-value" style="color: var(--danger);">R$ ${totalCosts.toFixed(2)}</div>
+                </div>
+                <div class="stat-card" style="border-left-color: var(--info);">
+                    <div class="stat-label">Lucro Líquido</div>
+                    <div class="stat-value" style="color: ${profit >= 0 ? 'var(--success)' : 'var(--danger)'};">R$ ${profit.toFixed(2)}</div>
+                </div>
+                <div class="stat-card" style="border-left-color: var(--warning);">
+                    <div class="stat-label">Total Vendido</div>
+                    <div class="stat-value">${totalGrams.toLocaleString('pt-BR')}g</div>
+                </div>
+            `;
+
+            eventsContainer.innerHTML = `<div class="event-list">${allEvents.map(event => {
+                const gelatos = event.gelatos ? Object.values(event.gelatos) : [];
+                const grams = gelatos.reduce((sum, g) => sum + (g.sold || 0), 0);
+                const revenue = grams * currentSettings.sellingPricePerGram;
+                const gelatoCost = (grams / 1000) * currentSettings.gelatoCostPerKg;
+                const costs = event.adminInfo?.costs || {};
+                const extraCosts = Object.values(costs).reduce((sum, c) => sum + c.value, 0);
+                const totalCost = gelatoCost + extraCosts;
+                const profit = revenue - totalCost;
+
+                return `
+                    <div class="event-item">
+                        <div class="event-item-header">
+                            <div>
+                                <div class="event-item-title">${event.name}</div>
+                                <div class="event-item-date">📅 ${new Date(event.date + 'T00:00:00').toLocaleDateString('pt-BR')}</div>
+                            </div>
+                            <button class="btn btn-primary btn-small" onclick="openAdminEventModal('${event.id}')">
+                                Ver Detalhes
+                            </button>
+                        </div>
+                        <div class="event-item-stats">
+                            <div class="event-stat">
+                                <div class="event-stat-label">Receita</div>
+                                <div class="event-stat-value" style="color: var(--success);">R$ ${revenue.toFixed(2)}</div>
+                            </div>
+                            <div class="event-stat">
+                                <div class="event-stat-label">Custos</div>
+                                <div class="event-stat-value" style="color: var(--danger);">R$ ${totalCost.toFixed(2)}</div>
+                            </div>
+                            <div class="event-stat">
+                                <div class="event-stat-label">Lucro</div>
+                                <div class="event-stat-value" style="color: ${profit >= 0 ? 'var(--success)' : 'var(--danger)'};">R$ ${profit.toFixed(2)}</div>
+                            </div>
+                            <div class="event-stat">
+                                <div class="event-stat-label">Pessoas</div>
+                                <div class="event-stat-value">${event.adminInfo?.people || 0}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('')}</div>`;
+        }
+
+        // Reports Page
+        function loadReportData() {
+            const statsContainer = document.getElementById('reportStats');
+
+            let totalRevenue = 0;
+            let totalCosts = 0;
+            let totalGrams = 0;
+            let totalEvents = allEvents.length;
+
+            const eventData = allEvents.map(event => {
+                const gelatos = event.gelatos ? Object.values(event.gelatos) : [];
+                const grams = gelatos.reduce((sum, g) => sum + (g.sold || 0), 0);
+                const revenue = grams * currentSettings.sellingPricePerGram;
+                const gelatoCost = (grams / 1000) * currentSettings.gelatoCostPerKg;
+                const costs = event.adminInfo?.costs || {};
+                const extraCosts = Object.values(costs).reduce((sum, c) => sum + c.value, 0);
+                const totalCost = gelatoCost + extraCosts;
+                const profit = revenue - totalCost;
+
+                totalRevenue += revenue;
+                totalCosts += totalCost;
+                totalGrams += grams;
+
+                return { name: event.name, revenue, cost: totalCost, profit };
+            });
+
+            const profit = totalRevenue - totalCosts;
+            const avgRevenue = totalEvents > 0 ? totalRevenue / totalEvents : 0;
+
+            statsContainer.innerHTML = `
+                <div class="stat-card" style="border-left-color: var(--success);">
+                    <div class="stat-label">Receita Total</div>
+                    <div class="stat-value" style="color: var(--success);">R$ ${totalRevenue.toFixed(2)}</div>
+                    <div class="stat-change">Média: R$ ${avgRevenue.toFixed(2)}/evento</div>
+                </div>
+                <div class="stat-card" style="border-left-color: var(--danger);">
+                    <div class="stat-label">Custos Totais</div>
+                    <div class="stat-value" style="color: var(--danger);">R$ ${totalCosts.toFixed(2)}</div>
+                </div>
+                <div class="stat-card" style="border-left-color: var(--info);">
+                    <div class="stat-label">Lucro Total</div>
+                    <div class="stat-value" style="color: ${profit >= 0 ? 'var(--success)' : 'var(--danger)'};">R$ ${profit.toFixed(2)}</div>
+                    <div class="stat-change ${profit >= 0 ? 'positive' : 'negative'}">
+                        Margem: ${totalRevenue > 0 ? ((profit/totalRevenue)*100).toFixed(1) : 0}%
+                    </div>
+                </div>
+                <div class="stat-card" style="border-left-color: var(--primary);">
+                    <div class="stat-label">Total de Eventos</div>
+                    <div class="stat-value">${totalEvents}</div>
+                </div>
+            `;
+
+            // Update charts
+            updateRevenueChart(eventData);
+            updateProfitChart(eventData);
+        }
+
+        function updateRevenueChart(data) {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            if (revenueChart) revenueChart.destroy();
+
+            revenueChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.name),
+                    datasets: [{
+                        label: 'Receita (R$)',
+                        data: data.map(d => d.revenue),
+                        borderColor: 'rgba(16, 185, 129, 1)',
+                        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { callback: v => 'R$ ' + v.toFixed(2) }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateProfitChart(data) {
+            const ctx = document.getElementById('profitChart').getContext('2d');
+            if (profitChart) profitChart.destroy();
+
+            profitChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.name),
+                    datasets: [{
+                        label: 'Lucro (R$)',
+                        data: data.map(d => d.profit),
+                        backgroundColor: data.map(d => d.profit >= 0 ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)'),
+                        borderColor: data.map(d => d.profit >= 0 ? 'rgba(16, 185, 129, 1)' : 'rgba(239, 68, 68, 1)'),
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            ticks: { callback: v => 'R$ ' + v.toFixed(2) }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Initialize
+        initFirebase();
+    </script>
+</body>
+</html>
